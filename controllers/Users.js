@@ -1,13 +1,12 @@
 import User from "../models/UserModel.js";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 
 
 // Get all users from sql database
 export const getUsers = async (req, res) => {
   try {
     const users = await User.findAll({
-      attributes: ["firstName", "lastName", "email", "phoneNumber", "username"],
+      attributes: ["firstName", "lastName", "email", "phoneNumber", "username", "userID", "userType"],
     });
     res.json(users);
   } catch (error) {
@@ -69,14 +68,21 @@ export const Login = async (req, res) => {
     const passwordMatch = await bcrypt.compare(req.body.password, user[0].psw);
     if (!passwordMatch) return res.status(400).json({ msg: "Wrong Password" });
 
-    // const userID = user[0].userID;
-    // const name = user[0].firstName;
-    // const email = user[0].email;
+    //Set the session user for express-session
+    req.session.user = {
+      userID: user[0].userID,
+      firstName: user[0].firstName,
+      lastName: user[0].lastName,
+      email: user[0].email,
+      phoneNumber: user[0].phoneNumber,
+      username: user[0].username,
+      userType: user[0].userType,
+    };
 
     const userObj = user[0].toJSON();
     console.log(userObj)
     const { userID, firstName, lastName, phoneNumber, email, userType, username } = userObj;
-    res.json({ msg: "success", user: { userID, firstName, lastName, phoneNumber, email, userType, username } });
+    res.json({ msg: "success", user: { userID, firstName, lastName, phoneNumber, email, userType, username }, sessionUser : req.session.user });
   } catch (error) {
     //If user does not exists
     res.status(404).json({ msg: "User not found" });
@@ -84,37 +90,28 @@ export const Login = async (req, res) => {
 };
 
 export const Logout = async (req, res) => {
-
-  const user = await User.findAll({
-    where: {
-      refreshToken: refreshToken,
-    },
-  });
-
-  if (!user[0]) return res.sendStatus(204);
-  const username = user[0].username;
-
-  await User.update(
-    {
-      where: {
-        username: username,
-      },
+  req.session.destroy((err) => {
+    if (err) {
+      res.status(500).json({ msg: "Error logging out" });
+    } else {
+      res.status(200).json({ msg: "Logged out successfully" });
     }
-  );
-  return res.sendStatus(200);
+  });
 };
 
 // Update user information by userID
 export const updateUser = async (req, res) => {
   try {
-    const { userID } = req.params;
-    const { firstName, lastName, email, phoneNumber, password, username } = req.body;
+    const { userID, firstName, lastName, email, phoneNumber, password, username, userType } = req.body;
     let updatedUser = {
+      userID,
       firstName,
       lastName,
       email,
       phoneNumber, 
-      username
+      username,
+      userType,
+      password
     };
     if (password) {
       const salt = await bcrypt.genSalt();
