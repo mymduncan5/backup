@@ -61,7 +61,7 @@ export const Login = async (req, res) => {
       where: {
         username: req.body.username, //finds the user with the username passed from the front end
       },
-      attributes: ["userID", "psw", "firstName", "lastName", "email", "phoneNumber", "username", "userType", "rfid"]
+      attributes: ["userID", "psw", "firstName", "lastName", "email", "phoneNumber", "username", "userType"]
     });
 
     //Verify Passwords
